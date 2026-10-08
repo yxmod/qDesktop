@@ -1,0 +1,11 @@
+﻿<Application x:Class="qDesktop.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:qDesktop.App">
+    <!--
+        不设置 StartupUri：主窗口由 App.OnStartup 从 DI 容器解析后显示，
+        以保证窗口及其依赖（视图模型、服务）统一由容器装配。
+    -->
+    <Application.Resources>
+    </Application.Resources>
+</Application>
