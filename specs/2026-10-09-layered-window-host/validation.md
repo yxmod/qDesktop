@@ -198,10 +198,13 @@
 
 | `roadmap.md` 阶段 1 验收标准 | 对应验证项 | 状态 |
 |---|---|---|
-| 窗口显示为无边框、无任务栏按钮、始终置顶 | V2.1、V2.2、V2.3 | ⬜ 待执行 |
-| 开启穿透后鼠标点击直接落到下层窗口；关闭穿透后可正常点击本窗口 | V3.1、V3.2 | ⬜ 待执行 |
-| 显示窗口时任务栏中其他窗口不失焦、不闪烁 | V4.1、V4.2 | ⬜ 待执行 |
-| 在 Win10 与 Win11 上行为一致 | V6.1、V6.2 | ⬜ 待执行（本机实测 + 另一版本待补） |
+| 窗口显示为无边框、无任务栏按钮、始终置顶 | V2.1、V2.2、V2.3 | ⬜ 待人工执行 |
+| 开启穿透后鼠标点击直接落到下层窗口；关闭穿透后可正常点击本窗口 | V3.1、V3.2 | ⬜ 待人工执行 |
+| 显示窗口时任务栏中其他窗口不失焦、不闪烁 | V4.1、V4.2 | ⬜ 待人工执行 |
+| 在 Win10 与 Win11 上行为一致 | V6.1、V6.2 | ⬜ 待人工执行（本机实测 + 另一版本待补） |
+
+> 自动化与静态验证（V1.1–V1.9）已于 2026-10-09 全部通过，详见附录 A.1。
+> 手工验证依赖真实桌面会话，尚未执行，故本阶段在 `roadmap.md` 中标记为 🟨 进行中。
 
 ---
 
@@ -252,37 +255,47 @@
 
 ## 附录 A · 实施记录
 
-> 执行日期：待填 ｜ 分支：`feature/phase-1-layered-window-host`
+> 执行日期：2026-10-09 ｜ 分支：`feature/phase-1-layered-window-host`
+> 说明：自动化与静态验证由实现者在开发机执行；手工验证（V2–V6、M1–M4）依赖真实桌面会话的目视与交互，
+> 须由评审者在本机执行后补记。
 
 ### A.1 自动化验证执行结果
 
 | 编号 | 结果 | 证据 |
 |---|---|---|
-| V1.1 / V1.2 | ⬜ | |
-| V1.3 / V1.4 / V1.5 / V1.6 | ⬜ | |
-| V1.7 / V1.8 / V1.9 | ⬜ | |
+| V1.1 / V1.2 | ✅ | `dotnet build qDesktop.sln -c Release` 退出码 0，输出 `0 个警告 0 个错误` |
+| V1.3 / V1.4 / V1.5 / V1.6 | ✅ | ① `grep -rn "DllImport\|LibraryImport" src/` 仅命中 `src/qDesktop.Interop/NativeMethods.cs`，`App` 内零命中；② `git diff --stat main -- src/qDesktop.Core` 为空；③ 各 `.csproj` 引用仍仅 `App→Core`、`App→Interop`、`Core.Tests→Core`；④ `tests/` 下仅 `qDesktop.Core.Tests` |
+| V1.7 / V1.8 / V1.9 | ✅ | ① `dotnet format qDesktop.sln --verify-no-changes` 退出码 0；② `dotnet test qDesktop.sln -c Release` 通过 2 / 失败 0；③ 反例：在 `src/qDesktop.App/` 临时注入含 `DllImport` 的探针文件后，V1.3 搜索**命中 App**（证明校验可被检出），随后删除并复验为「App 内无命中」 |
 
 ### A.2 手工验证执行结果
 
 | 编号 | 结果 | 证据 |
 |---|---|---|
-| V2.1–V2.6 | ⬜ | |
-| V3.1–V3.4 | ⬜ | |
-| V4.1–V4.3 | ⬜ | |
-| V5.1–V5.4 | ⬜ | |
-| V6.1 / V6.2 | ⬜ | |
-| M1 / M2 / M3 / M4 | ⬜ | |
+| V2.1–V2.6 | ⬜ 待人工执行 | 需真实桌面会话目视 + Spy++ 读取扩展样式位 |
+| V3.1–V3.4 | ⬜ 待人工执行 | 需真实桌面会话执行点击与穿透判定 |
+| V4.1–V4.3 | ⬜ 待人工执行 | 含反例（V4.3 须临时移除防激活后复现失焦） |
+| V5.1–V5.4 | 🟨 部分通过 | V5.1 已由启动冒烟覆盖：应用启动后持续存活 6 s、日志输出「qDesktop 启动完成」、无 DI 解析异常、无 `XamlParseException`；V5.2 由源码检查通过（`LayeredWindowHostViewModel` 未引用 `Window`/`Control`）；V5.3、V5.4 待人工 |
+| V6.1 / V6.2 | ⬜ 待人工执行 | V6.1 随 V2–V5 一并执行；V6.2 本机不可达，标注「待补」 |
+| M1 / M2 / M3 / M4 | ⬜ 待人工执行 | M2 中的 V1.9 反例已执行并通过；其余待人工 |
 
 ### A.3 与规格的偏差（如有，须回改文档）
 
-> 待实施后填写。
+1. **新增 Demo 专用转换器**：为对齐 `requirements.md` 3.6 的「Visible ↔ Hidden」语义（而非内置
+   `BooleanToVisibilityConverter` 的 `Collapsed`），新增 `BoolToHiddenVisibilityConverter`。
+   该转换器**必须**注册在 `App.xaml` 的 `Application.Resources` 而非窗口自身资源字典——
+   窗口根元素上的 `StaticResource` 在窗口资源字典解析**之前**求值，置于窗口资源会导致启动时
+   抛 `XamlParseException`（实现期实测确认）。已同步登记于 `requirements.md` 交付物清单 D4。
+2. **`IsClickThrough` 采用依赖属性实现**：`plan.md` TG3.1 仅要求「新增 `IsClickThrough` 属性」，
+   实现为 `DependencyProperty` 以同时满足双向绑定与变更通知，不改变对外语义。
+3. **日志实现**：`ShowInTaskbar` 运行时切换的警告（`requirements.md` 3.4 / `plan.md` TG2.5）
+   经 Serilog 静态日志器记录，与 `App.xaml.cs` 的既有日志方式一致。
 
 ### A.4 遗留项
 
 | 项 | 说明 | 处理时点 |
 |---|---|---|
 | V6.2 另一 Windows 版本覆盖 | 本机仅安装一个 Windows 版本 | 随阶段 2 双系统探测补验 |
-| Demo 窗口与视图模型的删除 | 临时产物 | 阶段 4 |
+| Demo 窗口、视图模型与转换器的删除 | 临时产物 | 阶段 4 |
 | 可见性守护定时器的移除 | 验证期权宜手段 | 阶段 9 |
 | 标题栏编辑态的焦点策略 | 与 `WS_EX_NOACTIVATE` 冲突 | 阶段 4 |
 | 是否建立 `qDesktop.Interop.Tests` | 待出现成规模可测逻辑时决定 | 阶段 2 或阶段 10 |

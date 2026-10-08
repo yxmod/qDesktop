@@ -184,6 +184,7 @@ TG1 ──> TG2 ──> TG3 ──> TG5 ──> TG6
 ### 交付物
 
 - `LayeredWindowHostDemoWindow`
+- `BoolToHiddenVisibilityConverter`（`bool` → `Visibility`，`false` 映射为 `Hidden`；注册在 `App.xaml` 的 `Application.Resources`）
 - 切换后的启动路径
 
 ### 完成判据

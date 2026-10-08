@@ -2,7 +2,7 @@
 
 Windows 桌面图标管理工具：以**栅栏（收纳盒）**组织桌面，支持**便签**、**文件夹映射**、**自由层级**、**隐藏/显示**，以及 QQ 式的**边缘隐藏**（鼠标划过即显）。
 
-> 当前进度：**阶段 0（项目脚手架与工程规范）**。本阶段不产出面向用户的功能，仅建立后续 18 个阶段的公共地基。阶段划分见 [`specs/roadmap.md`](specs/roadmap.md)。
+> 当前进度：**阶段 1（无边框透明窗口骨架）** 代码实现完成，自动化与静态验证通过；手工验收（窗口外观、穿透、防激活）待评审者在真实桌面会话执行。阶段划分见 [`specs/roadmap.md`](specs/roadmap.md)。
 
 ---
 
@@ -57,11 +57,29 @@ dotnet restore qDesktop.sln
 # 构建（Release；警告即错误，零警告方可通过）
 dotnet build qDesktop.sln -c Release
 
-# 运行（显示一个标题为 qDesktop 的空白窗口）
+# 运行（显示阶段 1 的窗口属性验证窗口）
 dotnet run --project src/qDesktop.App
 ```
 
 > 平台：首版仅 x64。构建时若指定 `-p:Platform=x86` 或 `-p:Platform=arm64` 将**直接失败**（平台白名单见 `Directory.Build.props`）。
+
+### 阶段 1 · 窗口属性验证窗口
+
+启动后显示一个 **420 × 220** 的半透明无边框窗口（`LayeredWindowHostDemoWindow`），
+用于人工验证「无边框 + 半透明 + 始终置顶 + 无任务栏按钮 + 不抢焦点」五项属性能否共存。
+窗口内含三个按钮与一行状态文本：
+
+| 按钮 | 行为 |
+|---|---|
+| **切换穿透** | 开/关 `WS_EX_TRANSPARENT`：开启后鼠标点击直接落到下层窗口（如记事本），本窗口不再接收点击 |
+| **切换置顶** | 开/关 `Topmost`：关闭后可被其他窗口遮挡，开启后始终位于最上层 |
+| **切换可见性** | 隐藏/显示窗口；隐藏后 **3 秒**由守护定时器自动恢复（阶段 1 尚无托盘与热键，此为验证期权宜手段，阶段 9 移除） |
+
+验证要点：窗口无标题栏与系统边框、任务栏无对应条目、点击本窗口时其他窗口不失焦。
+窗口左上角的说明文字已标注「本窗口为阶段 1 临时验证产物，阶段 4 删除」。
+验收清单见 [`specs/2026-10-09-layered-window-host/validation.md`](specs/2026-10-09-layered-window-host/validation.md)。
+
+> 阶段 0 的空白窗口 `MainWindow` 仍保留注册，但已不在启动路径显示。
 
 ---
 
@@ -124,6 +142,7 @@ dotnet format qDesktop.sln
 | [`specs/tech-stack.md`](specs/tech-stack.md) | 技术选型与已确认决策 |
 | [`specs/roadmap.md`](specs/roadmap.md) | 19 个阶段的划分、依赖与验收标准 |
 | [`specs/2026-10-08-project-scaffold/`](specs/2026-10-08-project-scaffold/) | 阶段 0 的需求 / 计划 / 验证标准 |
+| [`specs/2026-10-09-layered-window-host/`](specs/2026-10-09-layered-window-host/) | 阶段 1 的需求 / 计划 / 验证标准 |
 
 ---
 

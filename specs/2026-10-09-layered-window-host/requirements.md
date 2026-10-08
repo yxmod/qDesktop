@@ -165,6 +165,10 @@ qDesktop 为 Windows 用户提供**轻量、开源、可自由组织**的桌面�
 1. `roadmap.md` 阶段 1 任务 5 明确要求验证「可见性」切换，故须真实操作 `Visibility` 而非用透明度近似。
 2. 阶段 1 尚无托盘图标与全局热键（属阶段 9）。若 Demo 窗口隐藏后无任何恢复入口，验证者会被锁在「窗口不可见且无法唤回」的状态，只能结束进程——这会使该验证项**不可复现**，违反 `validation.md` 的「可复现」原则。
 3. 守护定时器是**验证期权宜手段**，在阶段 9 托盘 / 热键到位后应移除；已在 5.3 节登记。
+4. 视图模型不得引用 WPF 视图类型，故 `Visibility` 的换算由**视图层**的
+   `BoolToHiddenVisibilityConverter`（`false` → `Hidden`）承担，而非在视图模型中暴露
+   `Visibility`。该转换器须注册在 `App.xaml` 的 `Application.Resources`：窗口根元素上的
+   `StaticResource` 在窗口资源字典解析之前求值，置于窗口资源会抛 `XamlParseException`。
 
 ### 3.7 不引入自动化行为测试
 
@@ -252,7 +256,7 @@ tests/qDesktop.Core.Tests ──> qDesktop.Core
 | D1 | `qDesktop.Interop` 窗口样式基础设施（P/Invoke + 常量 + 辅助） | 源码 |
 | D2 | `LayeredWindowHost` 控件 | 源码 |
 | D3 | `LayeredWindowHostViewModel`（MVVM） | 源码 |
-| D4 | `LayeredWindowHostDemoWindow`（三按钮验证窗口） | 源码 |
+| D4 | `LayeredWindowHostDemoWindow`（三按钮验证窗口）及其专用可见性转换器 `BoolToHiddenVisibilityConverter`（见 3.6） | 源码 |
 | D5 | 宿主 DI 注册更新与启动路径切换 | 源码 |
 | D6 | 窗口行为验证记录（见 `validation.md` 附录 A） | 验证记录 |
 | D7 | 待评审的 PR（含三份文档链接与验收结论） | 交付流程 |
