@@ -1,0 +1,43 @@
+# ---- .NET / Visual Studio ----
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+_ReSharper*/
+*.DotSettings.user
+artifacts/
+publish/
+*.nupkg
+*.snupkg
+
+# ---- 构建 / 测试产物 ----
+TestResults/
+[Tt]est[Rr]esult*/
+coverage*.json
+coverage*.xml
+coverage*.cobertura.xml
+*.trx
+*.coverage
+
+# ---- Rider / VS Code ----
+.idea/
+.vscode/
+
+# ---- Windows 系统文件 ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ---- 本地工具状态（不纳入版本控制）----
+.workbuddy-ai/
+
+# ---- 本地运行期数据（正常位于 %APPDATA%\qDesktop\，防止误放仓库）----
+layout.json
+layout.json.bak
