@@ -21,6 +21,9 @@ internal static partial class NativeMethods
     /// <summary><c>GWL_EXSTYLE</c>：<c>GetWindowLongPtr</c> / <c>SetWindowLongPtr</c> 的扩展样式索引。</summary>
     internal const int GwlExStyle = -20;
 
+    /// <summary><c>HWND_NOTOPMOST</c>：把窗口置于所有非置顶窗口之上（Z 序参数）。</summary>
+    internal static readonly IntPtr HwndNotTopMost = new(-2);
+
     /// <summary>读取窗口扩展样式（按进程位宽分派 32 / 64 位入口）。</summary>
     internal static IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex)
         => IntPtr.Size == 8
@@ -44,6 +47,10 @@ internal static partial class NativeMethods
 
     [LibraryImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
     private static partial int SetWindowLong32(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    /// <summary>取当前前台窗口句柄；无前台窗口时返回零。</summary>
+    [LibraryImport("user32.dll")]
+    internal static partial IntPtr GetForegroundWindow();
 
     /// <summary>设置窗口位置、尺寸与 Z 序；本项目的用途是借 <c>SWP_FRAMECHANGED</c> 使样式变更即时生效。</summary>
     [LibraryImport("user32.dll", SetLastError = true)]

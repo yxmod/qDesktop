@@ -100,6 +100,15 @@ public class LayeredWindowHost : Window
         }
 
         base.OnPropertyChanged(e);
+
+        // 取消置顶后必须主动下沉：WPF 清除 WS_EX_TOPMOST 只会把窗口放到非置顶层的最上面，
+        // 即正好压在当前前台窗口之上；而本窗口不参与激活，前台窗口便永远等不到
+        // 「激活 → 提升」的时机（见 requirements.md 3.5）。放在 base 调用之后，
+        // 以确保 WPF 自身的 Z 序处理已完成。
+        if (e.Property == TopmostProperty && _styleService is not null && !(bool)e.NewValue)
+        {
+            _styleService.SinkBelowForeground();
+        }
     }
 
     private static void OnIsClickThroughChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -162,9 +171,13 @@ public class LayeredWindowHost : Window
         // （见 requirements.md 3.5）。
         if (msg == WindowMessages.MouseActivate)
         {
-            // WS_EX_NOACTIVATE 会抑制「点击激活 → 自动提升 Z 序」，若不显式提升，
-            // 关闭 Topmost 后窗口将无法通过点击回到最前。此处只提升、不激活，仍不夺焦点。
-            _styleService?.BringToTop();
+            // 仅在置顶状态下提升 Z 序。非置顶时**不得**提升：本窗口不参与激活，若被提到前台
+            // 窗口之上，前台窗口将失去「点击激活 → 提升」的机会，表现为「下层级程序无法被放到
+            // 上面」（见 requirements.md 3.5）。
+            if (Topmost)
+            {
+                _styleService?.BringToTop();
+            }
 
             handled = true;
             return new IntPtr(WindowMessages.MouseActivateNoActivate);

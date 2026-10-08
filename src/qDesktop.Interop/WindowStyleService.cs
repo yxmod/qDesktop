@@ -99,9 +99,8 @@ public sealed class WindowStyleService
     /// 将窗口提升到 Z 序顶端，但**不激活**它。
     /// </summary>
     /// <remarks>
-    /// <c>WS_EX_NOACTIVATE</c> 会抑制「点击激活 → 系统自动提升 Z 序」的行为。若不显式提升，
-    /// 关闭 <c>Topmost</c> 后窗口将无法通过点击回到最前（见
-    /// specs/2026-10-09-layered-window-host/requirements.md 3.5）。
+    /// <c>WS_EX_NOACTIVATE</c> 会抑制「点击激活 → 系统自动提升 Z 序」的行为，若不显式提升，
+    /// 窗口无法通过点击回到最前（见 specs/2026-10-09-layered-window-host/requirements.md 3.5）。
     /// </remarks>
     public void BringToTop()
         => NativeMethods.SetWindowPos(
@@ -114,4 +113,49 @@ public sealed class WindowStyleService
             SetWindowPosFlags.NoMove
             | SetWindowPosFlags.NoSize
             | SetWindowPosFlags.NoActivate);
+
+    /// <summary>
+    /// 把窗口沉到当前前台窗口之下，仍不激活窗口。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 用于取消置顶时：清除 <c>WS_EX_TOPMOST</c> 只会把窗口放到「非置顶层的最上面」，即**正好压在
+    /// 当前前台窗口之上**。而本窗口不参与激活，点击它不改变前台窗口，于是前台窗口永远等不到
+    /// 「激活 → 提升」的时机，表现为「位于下层级的程序无法被放到上面」。
+    /// </para>
+    /// <para>
+    /// 前台窗口若就是本窗口、或本身是置顶窗口，插入到它之下会无效，或按 <c>SetWindowPos</c> 的
+    /// 规则连带把本窗口也变成置顶窗口；此时退回 <c>HWND_NOTOPMOST</c>。
+    /// </para>
+    /// </remarks>
+    public void SinkBelowForeground()
+    {
+        var foreground = NativeMethods.GetForegroundWindow();
+
+        if (foreground != IntPtr.Zero && foreground != _handle && !IsTopMost(foreground))
+        {
+            NativeMethods.SetWindowPos(
+                _handle,
+                foreground,
+                0,
+                0,
+                0,
+                0,
+                SetWindowPosFlags.NoMove | SetWindowPosFlags.NoSize | SetWindowPosFlags.NoActivate);
+            return;
+        }
+
+        NativeMethods.SetWindowPos(
+            _handle,
+            NativeMethods.HwndNotTopMost,
+            0,
+            0,
+            0,
+            0,
+            SetWindowPosFlags.NoMove | SetWindowPosFlags.NoSize | SetWindowPosFlags.NoActivate);
+    }
+
+    private static bool IsTopMost(IntPtr handle)
+        => (NativeMethods.GetWindowLongPtr(handle, NativeMethods.GwlExStyle).ToInt64()
+            & (long)WindowExtendedStyle.TopMost) != 0;
 }

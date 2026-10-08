@@ -15,6 +15,12 @@ public enum WindowExtendedStyle : long
     None = 0,
 
     /// <summary>
+    /// <c>WS_EX_TOPMOST</c>：窗口置于所有非置顶窗口之上。
+    /// </summary>
+    /// <remarks>由 WPF 的 <c>Window.Topmost</c> 属性维护；本项目只读取该位用于 Z 序判断，不直接改写。</remarks>
+    TopMost = 0x00000008,
+
+    /// <summary>
     /// <c>WS_EX_TRANSPARENT</c>：窗口不接收鼠标命中测试，点击穿透到下层窗口。
     /// </summary>
     Transparent = 0x00000020,
