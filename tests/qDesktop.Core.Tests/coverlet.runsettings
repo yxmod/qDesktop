@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  coverlet 覆盖率采集配置。
+  依据：specs/2026-10-08-project-scaffold/plan.md 任务组 5.3（采集范围聚焦 qDesktop.Core）。
+
+  用法见 README.md「测试与覆盖率」小节。要点：
+    1. 在仓库根目录执行 dotnet test；
+    2. 附加 collect 参数 "XPlat Code Coverage"；
+    3. 以 settings 参数指向本文件。
+
+  阶段 0 仅采集并产出报告，不设阈值门禁（决策见 requirements.md 3.3）；
+  阈值门禁于阶段 3 在 CI 中启用。
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Include>[qDesktop.Core]*</Include>
+          <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
