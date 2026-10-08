@@ -143,13 +143,21 @@ qDesktop 为 Windows 用户提供**轻量、开源、可自由组织**的桌面�
 
 ### 3.5 防激活策略：`WS_EX_NOACTIVATE` + 拦截 `WM_MOUSEACTIVATE`
 
-**决策**：双重保障——静态样式位 `WS_EX_NOACTIVATE` 与消息级拦截 `WM_MOUSEACTIVATE`（返回 `MA_NOACTIVATE`）同时启用；拦截时**同时**执行一次 `SetWindowPos(HWND_TOP, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)`，把窗口提升到 Z 序顶端但不激活它。
+**决策**：双重保障——静态样式位 `WS_EX_NOACTIVATE` 与消息级拦截 `WM_MOUSEACTIVATE`（返回 `MA_NOACTIVATE`）**始终启用**（不随 `Topmost` 变化）；并在 Z 序上遵守两条规则：
+
+| 时机 | 动作 |
+|---|---|
+| 点击本窗口且 `Topmost = true` | 补发 `SetWindowPos(HWND_TOP, SWP_NOMOVE \| SWP_NOSIZE \| SWP_NOACTIVATE)`，提升到 Z 序顶端但不激活 |
+| 点击本窗口且 `Topmost = false` | **不**提升 Z 序 |
+| `Topmost` 由 `true` 变为 `false` | 补发 `SetWindowPos(<当前前台窗口>, SWP_NOMOVE \| SWP_NOSIZE \| SWP_NOACTIVATE)`，把窗口**沉到当前前台窗口之下** |
 
 **理由**：
 
 1. `WS_EX_NOACTIVATE` 阻止窗口在点击时成为前台窗口，但**不阻止** WPF 内部对该消息的处理路径；显式拦截 `WM_MOUSEACTIVATE` 可保证返回值确定，避免不同 Windows 版本或 WPF 版本下行为漂移（`mission.md` 第 7 节「Win10 与 Win11 桌面层结构差异」的同类风险）。
 2. 拦截通过 `HwndSource.AddHook` 实现，钩子在 `SourceInitialized` 时挂载、在窗口 `Closed` 时移除，避免句柄泄漏（对齐 `tech-stack.md` 2.5 节的泄漏排查要求）。
-3. **必须显式提升 Z 序**：系统「点击未激活窗口 → 先激活再提升」的行为被 `WS_EX_NOACTIVATE` 一并抑制。若不补发 `SetWindowPos`，一旦关闭 `Topmost`，窗口被其他窗口遮挡后即无法通过点击回到最前（实现期实测确认）。补发的调用带 `SWP_NOACTIVATE`，因此仍然不夺焦点，只是「到最前」而非「成为前台」。
+3. **置顶时需显式提升 Z 序**：系统「点击未激活窗口 → 先激活再提升」的行为被 `WS_EX_NOACTIVATE` 一并抑制，置顶窗口仍应保持在最前，故补发一次带 `SWP_NOACTIVATE` 的提升——只「到最前」，不「成为前台」。
+4. **取消置顶时必须主动下沉**：清除 `WS_EX_TOPMOST` 只会把窗口放到「非置顶层的最上面」，即**正好压在当前前台窗口之上**。由于本窗口不参与激活，点击它不改变前台窗口，前台窗口便永远等不到「激活 → 提升」的时机，表现为「位于下层级的程序无法被放到本窗口上面，必须先激活第三个程序才能解除」（实现期实测确认）。因此取消置顶时把窗口沉到当前前台窗口之下；前台窗口若就是本窗口或本身是置顶窗口，则退回 `HWND_NOTOPMOST`（`SetWindowPos` 的规则会使被插入到置顶窗口之下的窗口也变成置顶）。
+5. **非置顶时不提升**：同理，非置顶状态下若仍把窗口提到前台窗口之上，会重新制造第 4 点的问题。代价是取消置顶后点击本窗口不再把它带到最前——此时需重新开启置顶，或等待 3.6 的守护自动恢复。
 
 **已识别的代价**：
 

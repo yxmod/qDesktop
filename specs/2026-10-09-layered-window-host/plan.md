@@ -93,6 +93,7 @@ TG1 ──> TG2 ──> TG3 ──> TG5 ──> TG6
 3. **2.3** 在 `SourceInitialized` 中通过 `HwndSource.AddHook` 挂载窗口过程钩子，拦截 `WM_MOUSEACTIVATE`：先补发一次 `SetWindowPos(HWND_TOP, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)` 把窗口提到 Z 序顶端，再返回 `MA_NOACTIVATE`。提升是必需的——`WS_EX_NOACTIVATE` 会一并抑制「点击激活 → 自动提升」的系统行为（依据 `requirements.md` 3.5）。
 4. **2.4** 在窗口 `Closed` 时移除钩子并释放 `HwndSource` 引用，避免句柄泄漏。
 5. **2.5** 约束 `ShowInTaskbar` 为初始化期设定：在窗口显示后尝试运行时切换时，记录一条警告日志并忽略该变更（依据 `requirements.md` 3.4）。
+6. **2.6** 处理 `Topmost` 变更（依据 `requirements.md` 3.5）：在 `OnPropertyChanged` 中，当 `Topmost` 由 `true` 变为 `false` 时调用 `WindowStyleService.SinkBelowForeground()`，把窗口沉到当前前台窗口之下；处理须在 `base.OnPropertyChanged` 之后执行，以确保 WPF 自身的 Z 序处理已完成。同时窗口过程钩子仅在 `Topmost` 为 `true` 时提升 Z 序。
 
 ### 交付物
 
