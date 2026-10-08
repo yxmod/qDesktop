@@ -1,1 +1,132 @@
-我需要做一个Windows桌面端图标管理程序，要有栅栏（收纳盒、便签、文件夹映射）这些功能，可以自由设置层级，可以隐藏显示，可以类似于QQ的边缘隐藏，鼠标划过去就显示的这个功能。
+# qDesktop
+
+Windows 桌面图标管理工具：以**栅栏（收纳盒）**组织桌面，支持**便签**、**文件夹映射**、**自由层级**、**隐藏/显示**，以及 QQ 式的**边缘隐藏**（鼠标划过即显）。
+
+> 当前进度：**阶段 0（项目脚手架与工程规范）**。本阶段不产出面向用户的功能，仅建立后续 18 个阶段的公共地基。阶段划分见 [`specs/roadmap.md`](specs/roadmap.md)。
+
+---
+
+## 环境要求
+
+| 项 | 要求 |
+|---|---|
+| 操作系统 | Windows 10 1903+ / Windows 11（首版仅 x64） |
+| .NET SDK | 任意可构建 `net8.0-windows` 的版本（本机验证：10.0.401） |
+| 目标框架 | `net8.0` / `net8.0-windows`（.NET 8 LTS） |
+
+仓库**不含 `global.json`**，不锁定 SDK 版本：本地用已安装 SDK 构建，CI 通过 `setup-dotnet` 固定 `8.0.x` 以保证流水线可复现。决策依据见 [`specs/2026-10-08-project-scaffold/requirements.md`](specs/2026-10-08-project-scaffold/requirements.md) 3.1。
+
+---
+
+## 目录结构
+
+```
+qDesktop.sln                 解决方案
+Directory.Build.props        全仓库统一构建配置（语言版本、警告即错误、元数据）
+.editorconfig                代码风格与命名规则
+.gitattributes               换行符策略（统一 LF）
+src/
+  qDesktop.App/              WPF 应用宿主：组合根、DI、日志、视图
+  qDesktop.Core/             领域模型与业务逻辑（无 UI 依赖）
+  qDesktop.Interop/          全部 Win32 P/Invoke 声明的唯一落点
+tests/
+  qDesktop.Core.Tests/       Core 单元测试
+specs/                        项目章程、路线图、技术选型、各阶段规格
+```
+
+### 架构约束（编译期强制）
+
+```
+qDesktop.App        ──> qDesktop.Core
+qDesktop.App        ──> qDesktop.Interop
+qDesktop.Core       ──✗ qDesktop.Interop
+qDesktop.Core       ──✗ 任何 WPF 程序集
+qDesktop.Core.Tests ──> qDesktop.Core
+```
+
+`qDesktop.Core` 不得引用 `Interop` 或 WPF；该约束由项目引用关系保证，并有单元测试持续断言。
+
+---
+
+## 构建与运行
+
+```bash
+# 还原
+dotnet restore qDesktop.sln
+
+# 构建（Release；警告即错误，零警告方可通过）
+dotnet build qDesktop.sln -c Release
+
+# 运行（显示一个标题为 qDesktop 的空白窗口）
+dotnet run --project src/qDesktop.App
+```
+
+> 平台：首版仅 x64。构建时若指定 `-p:Platform=x86` 或 `-p:Platform=arm64` 将**直接失败**（平台白名单见 `Directory.Build.props`）。
+
+---
+
+## 测试与覆盖率
+
+```bash
+# 运行测试（含覆盖率采集）
+dotnet test qDesktop.sln -c Release \
+  --collect:"XPlat Code Coverage" \
+  --settings tests/qDesktop.Core.Tests/coverlet.runsettings
+
+# 仅运行测试
+dotnet test qDesktop.sln -c Release
+```
+
+- 覆盖率报告位置：`TestResults/<guid>/coverage.cobertura.xml`
+- 采集范围限定为 `qDesktop.Core`（见 `tests/qDesktop.Core.Tests/coverlet.runsettings`）
+- **阶段 0 仅采集、不设阈值门禁**；阈值（行覆盖率 ≥ 60%）于阶段 3 在 CI 中启用
+
+---
+
+## 代码格式
+
+```bash
+# 校验（CI 门禁；有偏差时返回非零退出码）
+dotnet format qDesktop.sln --verify-no-changes
+
+# 自动修复
+dotnet format qDesktop.sln
+```
+
+换行符统一为 **LF**，由 `.editorconfig` 与 `.gitattributes` 双重固定，避免本地与 CI 格式校验结果漂移。
+
+---
+
+## 日志
+
+- 位置：`%APPDATA%\qDesktop\logs\qDesktop-YYYYMMDD.log`
+- 策略：按天滚动，保留 7 天
+- 级别：默认 `Information`，可在 `src/qDesktop.App/appsettings.json` 中改为 `Debug`
+- 降级：`%APPDATA%` 不可写时回落到 `%TEMP%\qDesktop\logs\`；两者均不可写则不写文件日志，应用仍可启动
+
+日志**不会**写入程序输出目录。
+
+---
+
+## 工程约定
+
+- **分支命名**：`feature/<阶段号>-<短名>`，例如 `feature/phase-0-project-scaffold`
+- **提交信息**：Conventional Commits（`feat` / `fix` / `chore` / `docs` / `refactor` / `test` / `ci` / `build` / `perf` / `style`）
+- **静态分析**：`TreatWarningsAsErrors=true`，分析器规则豁免须在 [`specs/tech-stack.md`](specs/tech-stack.md) 2.5.1 节登记
+
+---
+
+## 文档
+
+| 文档 | 内容 |
+|---|---|
+| [`specs/mission.md`](specs/mission.md) | 使命、目标用户、价值主张、范围边界、成功标准 |
+| [`specs/tech-stack.md`](specs/tech-stack.md) | 技术选型与已确认决策 |
+| [`specs/roadmap.md`](specs/roadmap.md) | 19 个阶段的划分、依赖与验收标准 |
+| [`specs/2026-10-08-project-scaffold/`](specs/2026-10-08-project-scaffold/) | 阶段 0 的需求 / 计划 / 验证标准 |
+
+---
+
+## 许可证
+
+MIT（选型依据见 [`specs/tech-stack.md`](specs/tech-stack.md) 2.6；`LICENSE` 文件于阶段 18 补充）
