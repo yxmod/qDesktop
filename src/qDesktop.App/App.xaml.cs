@@ -19,10 +19,12 @@ namespace qDesktop.App;
 /// 职责：
 /// <list type="number">
 ///   <item>装配 <see cref="IHost"/>：配置、依赖注入、日志；</item>
-///   <item>在启动时从容器解析并显示主窗口；</item>
+///   <item>在启动时从容器解析并显示启动窗口；</item>
 ///   <item>在退出时停止宿主并冲刷日志缓冲。</item>
 /// </list>
-/// 阶段 0 仅装配基础设施，不含任何业务功能（见 requirements.md 第 2.2 节）。
+/// 阶段 1 的启动窗口为 <see cref="LayeredWindowHostDemoWindow"/>（临时验证产物，阶段 4 删除）；
+/// 阶段 0 的 <see cref="MainWindow"/> 保留注册但不在启动路径显示
+/// （见 specs/2026-10-09-layered-window-host/requirements.md 3.1）。
 /// </remarks>
 public partial class App : Application
 {
@@ -47,9 +49,9 @@ public partial class App : Application
             typeof(App).Assembly.GetName().Version?.ToString() ?? "unknown",
             AppPaths.EffectiveLogDirectory ?? "(未启用文件日志)");
 
-        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
-        MainWindow = mainWindow;
-        mainWindow.Show();
+        var startupWindow = _host.Services.GetRequiredService<LayeredWindowHostDemoWindow>();
+        MainWindow = startupWindow;
+        startupWindow.Show();
     }
 
     /// <inheritdoc />
@@ -96,8 +98,11 @@ public partial class App : Application
         builder.Logging.ClearProviders();
         builder.Logging.AddSerilog(Log.Logger, dispose: false);
 
-        // 阶段 0 仅注册主窗口；业务服务自阶段 1 起逐步注册。
+        // 阶段 0 的 MainWindow 保持注册但不在启动路径显示；
+        // 阶段 1 追加窗口验证 Demo 的视图模型与窗口（均为 Transient，见 requirements.md 3.3）。
         builder.Services.AddSingleton<MainWindow>();
+        builder.Services.AddTransient<LayeredWindowHostViewModel>();
+        builder.Services.AddTransient<LayeredWindowHostDemoWindow>();
 
         return builder.Build();
     }
