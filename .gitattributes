@@ -1,0 +1,31 @@
+# 统一换行符策略
+#
+# 依据：specs/2026-10-08-project-scaffold/validation.md V5.4 要求
+#       `dotnet format --verify-no-changes` 在 CI 上稳定通过。
+#
+# 背景：本机 git 的 core.autocrlf=true 会把仓库内的 LF 在工作区展开为 CRLF；
+#       而 GitHub Actions 的 Windows runner 默认 core.autocrlf=false，检出为 LF。
+#       若不固定，同一提交在本地与 CI 的换行符不同，格式校验将随机失败。
+#
+# 策略：仓库内一律存 LF，工作区一律检出 LF（不依赖 core.autocrlf）。
+#       与 .editorconfig 的 `end_of_line = lf` 保持一致。
+
+* text=auto eol=lf
+
+# 二进制文件不参与换行符转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.bmp binary
+*.zip binary
+*.7z binary
+*.exe binary
+*.dll binary
+*.pdb binary
+*.snk binary
+*.pfx binary
+*.ttf binary
+*.woff binary
+*.woff2 binary

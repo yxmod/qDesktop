@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!--
+    架构约束（见 specs/2026-10-08-project-scaffold/requirements.md 第 4 节）：
+    qDesktop.Core 为领域层，仅允许依赖 BCL。
+    禁止引用 qDesktop.Interop 与任何 WPF 程序集。
+  -->
+
+</Project>

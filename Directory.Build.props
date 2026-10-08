@@ -1,0 +1,61 @@
+<Project>
+
+  <!--
+    qDesktop 全仓库统一构建配置。
+    依据：specs/2026-10-08-project-scaffold/plan.md 任务组 2、specs/tech-stack.md 2.1 / 2.5。
+
+    注意：本文件**不**设置 <TargetFramework>，目标框架由各项目自行声明：
+      - qDesktop.App      → net8.0-windows
+      - qDesktop.Interop  → net8.0-windows
+      - qDesktop.Core     → net8.0
+      - qDesktop.Core.Tests → net8.0-windows
+  -->
+
+  <PropertyGroup>
+    <!-- 语言与编译期安全 -->
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- 警告即错误：任何警告都会中断构建，防止噪声淹没真实缺陷 -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- 静态分析：启用推荐规则集 -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- 构建可复现性 -->
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!--
+    平台白名单：首版仅支持 x64（决策见 specs/tech-stack.md 2.1）。
+    显式声明后，`dotnet build -p:Platform=x86` / `arm64` 会因平台不在白名单而**构建失败**，
+    使「解决方案中不存在 x86 / arm64 配置」成为可证伪的机器校验项
+    （对齐 specs/2026-10-08-project-scaffold/validation.md V1.3）。
+    AnyCPU 保留为默认值：Platform 仅用于配置切换，真正的架构由 RuntimeIdentifier 决定。
+  -->
+  <PropertyGroup>
+    <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
+
+  <!-- 平台架构：首版仅 x64（决策见 specs/tech-stack.md 2.1）。仅应用宿主需要 RID 产出。 -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'qDesktop.App'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <!-- 程序集元数据占位（正式版本号与发布信息见 specs/roadmap.md 阶段 17 / 18） -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <Product>qDesktop</Product>
+    <Company>qDesktop</Company>
+    <Authors>yxmod</Authors>
+    <Copyright>Copyright (c) 2026 qDesktop contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/yxmod/qDesktop</RepositoryUrl>
+  </PropertyGroup>
+
+</Project>
