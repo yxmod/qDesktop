@@ -169,11 +169,11 @@
 
 | `roadmap.md` 阶段 0 验收标准 | 对应验证项 | 状态 |
 |---|---|---|
-| `dotnet build` 零警告零错误（`TreatWarningsAsErrors=true`） | V1.2、V1.4 | ⬜ |
-| 应用启动后显示一个空窗口，日志文件正常写入 | V3.1、V2.1、V2.2 | ⬜ |
-| CI 在 PR 上成功执行并通过格式校验 | V5.1–V5.5 | ⬜ |
-| 四个项目引用方向正确，`Core` 不引用 `Interop` 与 WPF | V1.6 | ⬜ |
-| 构建产物为 `win-x64`，无 x86 / arm64 配置，可在 Win10 1903+ 与 Win11 启动 | V1.3、V1.8、V3.3 | ⬜ |
+| `dotnet build` 零警告零错误（`TreatWarningsAsErrors=true`） | V1.2、V1.4 | ✅ 0 警告 0 错误；反例构建失败 |
+| 应用启动后显示一个空窗口，日志文件正常写入 | V3.1、V2.1、V2.2 | ✅ 窗口标题 `qDesktop`；日志写入 `%APPDATA%\qDesktop\logs\` |
+| CI 在 PR 上成功执行并通过格式校验 | V5.1–V5.5 | 🟨 YAML 与步骤齐备、本地等价命令全通过；首次运行待 PR 打开后确认 |
+| 四个项目引用方向正确，`Core` 不引用 `Interop` 与 WPF | V1.6 | ✅ 由项目引用强制，并有单元测试持续断言 |
+| 构建产物为 `win-x64`，无 x86 / arm64 配置，可在 Win10 1903+ 与 Win11 启动 | V1.3、V1.8、V3.3 | 🟨 V1.3 / V1.8 通过；V3.3 双系统启动仅在本机 Windows 验证，另一系统待补 |
 
 ---
 
@@ -221,3 +221,51 @@
 ---
 
 *本文档为阶段 0 验证标准的权威来源。验证项增删须同步更新第 4 节合并检查清单与第 5 节对照表。*
+
+---
+
+## 附录 A · 实施记录
+
+> 执行日期：2026-10-08 ｜ 分支：`feature/phase-0-project-scaffold`
+
+### A.1 自动化验证执行结果
+
+| 编号 | 结果 | 证据 |
+|---|---|---|
+| V1.1 / V1.2 | ✅ | `dotnet build qDesktop.sln -c Release` → `0 警告 0 错误` |
+| V1.3 | ✅ | `-p:Platform=x86` → `error MSB4126`（退出码 1）；`arm64` 同 |
+| V1.4 | ✅ | 引入未使用变量 → `error CS0219`（反例生效，已还原） |
+| V1.5 | ✅ | 仓库无 `global.json` |
+| V1.6 / V1.7 | ✅ | 仅 3 条 `ProjectReference`；TFM 为 `net8.0` / `net8.0-windows` |
+| V1.8 | ✅ | 输出路径 `bin/Release/net8.0-windows/win-x64/` |
+| V2.1–V2.4 | ✅ | `%APPDATA%\qDesktop\logs\qDesktop-YYYYMMDD.log` 生成，含时间戳与级别；`bin/` 下无 `.log`；按天滚动、保留 7 天 |
+| V3.1 / V3.2 | ✅ | 窗口标题 `qDesktop`；关闭后进程以退出码 0 结束，无残留进程 |
+| V3.3 | 🟨 | 仅在本机 Windows 验证；另一系统待补 |
+| V4.1 / V4.2 | ✅ | 2 个测试通过；`TestResults/**/coverage.cobertura.xml` 生成 |
+| V4.3 / V4.4 | ✅ | 无覆盖率门禁；测试项目含 4 类框架包 |
+| V5.1–V5.3 | ✅ | YAML 可解析；`on:` 含 `pull_request` 与 `push`（均限 `main`）；四阶段齐备 |
+| V5.4 | ✅ | 打乱缩进 → 退出码 2（反例生效，已还原） |
+| V5.5–V5.7 | ✅ | 产物上传、签名步骤默认关闭且以 Secrets 占位、`setup-dotnet` 固定 `8.0.x` 且无 `global.json` |
+| M1 | ✅ | 干净克隆后 LF 一致、构建零警告、测试通过、格式校验通过、应用可启动 |
+| M2 | ✅ | V1.3 / V1.4 / V5.4 三项反例均按预期失败并已还原 |
+| M3 | ✅ | 日志格式为「时间戳 [级别] 来源 / 消息」，人工可读 |
+| M4 | ✅ | 热启动至窗口可见：547 / 689 / 773 ms（3 次，轮询粒度 25 ms） |
+
+### A.2 与规格的偏差（已回改文档）
+
+1. **解决方案文件格式**：`.NET 10 SDK` 的 `dotnet new sln` 默认生成 `.slnx`，但 CI 固定的 `.NET 8 SDK` 无法解析该格式，故显式使用经典 `.sln`（`--format sln`）。
+2. **新增 `.gitattributes`，并将 `end_of_line` 固定为 LF**：本机 `core.autocrlf=true` 与 CI runner 的 `core.autocrlf=false` 会使同一提交的换行符不同，导致 `dotnet format --verify-no-changes` 随机失败。此为可复现性的必要条件。
+3. **新增 `Platforms=AnyCPU;x64` 白名单**（`Directory.Build.props`）：`dotnet new sln` 生成的 `.sln` 含 `x86` 配置，且 `-p:Platform=x86` 会被静默接受，不满足 1.1 节的「可证伪」原则。已重写 `.sln` 并加入项目级平台白名单，使 V1.3 真实生效。
+4. **App 项目移除 `System.Windows.Forms` 全局 using**：`UseWindowsForms=true` + `ImplicitUsings` 会注入该全局 using，与 WPF 的 `Application` 等类型产生 `CS0104` 二义性。后续阶段仅需 WinForms 的 `NotifyIcon`，按需显式引用即可。
+5. **`CA1707` 定向豁免**：与 xUnit 的 `Method_Scenario_Expectation` 命名惯例冲突，仅在 `tests/**` 关闭，已登记于 `specs/tech-stack.md` 2.5.1。
+6. **新增 `tests/qDesktop.Core.Tests/coverlet.runsettings`**：以配置而非命令行参数固定采集范围为 `qDesktop.Core`，便于本地与 CI 共用同一份设置。
+7. **覆盖率基线为「0 可计行」**：`qDesktop.Core` 在阶段 0 仅含常量定义，无 IL 可计行，故 `lines-valid=0`。链路可用性已由报告成功产出证明；有意义的覆盖率数值自阶段 3 起出现。
+
+### A.3 遗留项
+
+| 项 | 说明 | 处理时点 |
+|---|---|---|
+| V3.3 双系统启动 | 本机仅安装一个 Windows 版本，未覆盖另一系统 | 首次 Release 前补充 |
+| V5.1 / V5.3 的 CI 首次运行 | 需 PR 打开后由流水线实际执行确认 | 本 PR 评审期间 |
+| `global.json` 与 SDK 漂移 | 本地 10.0.401 / CI 8.0.x，按决策 3.1 不做锁定 | 出现差异时以 CI 为准 |
+
