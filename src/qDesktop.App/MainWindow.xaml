@@ -1,0 +1,18 @@
+﻿<Window x:Class="qDesktop.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:qDesktop.App"
+        mc:Ignorable="d"
+        Title="qDesktop"
+        Height="450"
+        Width="800"
+        WindowStartupLocation="CenterScreen">
+    <!--
+        阶段 0 基线窗口：普通顶层窗口，不含无边框、分层、穿透等桌面层特性。
+        上述特性属阶段 1（见 specs/roadmap.md 阶段 1），届时本窗口将被替换。
+    -->
+    <Grid>
+    </Grid>
+</Window>
