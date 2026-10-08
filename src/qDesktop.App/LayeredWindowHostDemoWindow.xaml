@@ -1,0 +1,60 @@
+<!--
+    qDesktop · 阶段 1 无边框透明窗口骨架 · 临时验证窗口
+
+    被测对象即本窗口自身（继承 LayeredWindowHost）：
+      - 按钮一：切换点击穿透（WS_EX_TRANSPARENT）
+      - 按钮二：切换始终置顶（Topmost）
+      - 按钮三：切换可见性（隐藏后 3 秒由守护定时器自动恢复）
+
+    本窗口为阶段 1 临时产物，阶段 4（栅栏渲染落地）时连同视图模型与转换器一并删除。
+    见 specs/2026-10-09-layered-window-host/requirements.md 3.1。
+-->
+<local:LayeredWindowHost x:Class="qDesktop.App.LayeredWindowHostDemoWindow"
+                         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                         xmlns:local="clr-namespace:qDesktop.App"
+                         Title="qDesktop · 阶段 1 窗口属性验证"
+                         Width="420"
+                         Height="220"
+                         IsClickThrough="{Binding IsClickThrough, Mode=TwoWay}"
+                         Topmost="{Binding IsTopmost, Mode=TwoWay}"
+                         Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+
+    <Border Background="#CC1B1B1F"
+            BorderBrush="#66FFFFFF"
+            BorderThickness="1"
+            CornerRadius="12"
+            Padding="16">
+        <StackPanel>
+            <TextBlock Text="qDesktop · 阶段 1 窗口属性验证"
+                       FontSize="15"
+                       FontWeight="SemiBold"
+                       Foreground="#FFF2F2F2" />
+            <TextBlock Margin="0,4,0,12"
+                       FontSize="12"
+                       Foreground="#FFB8B8C0"
+                       TextWrapping="Wrap"
+                       Text="本窗口为阶段 1 临时验证产物，阶段 4 删除。" />
+
+            <StackPanel Orientation="Horizontal">
+                <Button Margin="0,0,8,0"
+                        Padding="12,6"
+                        Content="切换穿透"
+                        Command="{Binding ToggleClickThroughCommand}" />
+                <Button Margin="0,0,8,0"
+                        Padding="12,6"
+                        Content="切换置顶"
+                        Command="{Binding ToggleTopmostCommand}" />
+                <Button Padding="12,6"
+                        Content="切换可见性"
+                        Command="{Binding ToggleVisibilityCommand}" />
+            </StackPanel>
+
+            <TextBlock Margin="0,14,0,0"
+                       FontSize="12"
+                       Foreground="#FFE8E8EC"
+                       TextWrapping="Wrap"
+                       Text="{Binding StatusText}" />
+        </StackPanel>
+    </Border>
+</local:LayeredWindowHost>
