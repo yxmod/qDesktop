@@ -4,8 +4,9 @@ namespace qDesktop.Interop;
 /// 程序集占位标记类型。
 /// </summary>
 /// <remarks>
-/// 阶段 0 的 qDesktop.Interop 尚无 P/Invoke 声明。Win32 互操作代码自阶段 2
-/// （桌面层探测）起引入。本类型仅用于保证空程序集可被引用。
+/// Win32 互操作代码自阶段 1（无边框透明窗口骨架）起引入，当前包含窗口扩展样式
+/// （<c>WS_EX_*</c>）的读写封装；桌面层探测等更复杂的互操作自阶段 2 起追加。
+/// 本类型仅用于保证程序集可被引用并提供稳定的程序集标识。
 /// </remarks>
 public static class AssemblyMarker
 {
