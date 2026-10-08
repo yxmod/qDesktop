@@ -33,9 +33,9 @@
 
 | 交付物 | 位置 |
 |---|---|
-| 窗口扩展样式互操作基础设施（P/Invoke + 常量 + 托管封装） | `src/qDesktop.Interop/` |
+| 窗口扩展样式互操作基础设施（P/Invoke + 常量 + 托管封装，含 Z 序提升） | `src/qDesktop.Interop/` |
 | `LayeredWindowHost`（无边框 / 半透明 / 置顶 / 无任务栏按钮 / 防激活 / 点击穿透开关） | `src/qDesktop.App/LayeredWindowHost.cs` |
-| `LayeredWindowHostViewModel` + `BoolToHiddenVisibilityConverter` | `src/qDesktop.App/` |
+| `LayeredWindowHostViewModel`（三个切换项 + 统一防锁死守护） | `src/qDesktop.App/` |
 | `LayeredWindowHostDemoWindow`（三按钮验证窗口） | `src/qDesktop.App/LayeredWindowHostDemoWindow.xaml` |
 | 宿主 DI 注册与启动路径切换 | `src/qDesktop.App/App.xaml.cs` |
 
@@ -54,19 +54,25 @@
 
 窗口外观、点击穿透落点、防激活与双版本一致性依赖真实桌面会话的目视与交互，需评审者在本机执行后补记（见 validation.md 附录 A.2）。启动冒烟已覆盖 V5.1 的一部分：应用启动后持续存活、日志输出「qDesktop 启动完成」、无 DI 解析异常与 `XamlParseException`。
 
-### 实施偏差（已回改文档）
+### 实现期试用后修正的缺陷（已回改文档）
 
-1. 新增 Demo 专用 `BoolToHiddenVisibilityConverter`（`false` → `Hidden`，对齐 requirements 3.6 的「Visible ↔ Hidden」语义）。因窗口根元素上的 `StaticResource` 在窗口资源字典解析之前求值，该转换器必须注册在 `App.xaml` 的 `Application.Resources`；置于窗口资源会在启动时抛 `XamlParseException`（实现期实测确认）。
-2. `IsClickThrough` 以 `DependencyProperty` 实现，以满足双向绑定与变更通知，对外语义不变。
-3. `plan.md` 建议的提交序列将「点击穿透」单列一次提交；因该逻辑与窗口基类同处一个文件，已合并为一次提交。
+1. **取消置顶后窗口无法再被带到最前**：`WS_EX_NOACTIVATE` 一并抑制了「点击激活 → 自动提升 Z 序」的系统行为。现于 `WM_MOUSEACTIVATE` 拦截中补发 `SetWindowPos(HWND_TOP, SWP_NOACTIVATE)`，只提升、不激活（requirements 3.5）。
+2. **开启穿透后完全锁死**：穿透开启后窗口不可点击，且无任务栏与 `Alt+Tab` 入口。现将防锁死守护从「仅可见性」扩展为三项统一策略：穿透开启 10 秒 → 自动关闭；置顶关闭 10 秒 → 自动恢复；可见性隐藏 3 秒 → 自动恢复。状态文本实时显示剩余秒数（requirements 3.6）。
+3. **点击「切换可见性」窗口不消失**：窗口根元素上的 `Visibility` 绑定会被 `Window.Show()` 设定的本地值顶掉。现改由视图在视图模型 `PropertyChanged` 回调中直接设置 `Visibility`，并移除为此引入的转换器（plan TG4.3 / TG5.2）。
+
+### 其它实施说明
+
+- `IsClickThrough` 以 `DependencyProperty` 实现，以满足双向绑定与变更通知，对外语义不变。
+- `plan.md` 建议的提交序列将「点击穿透」单列一次提交；因该逻辑与窗口基类同处一个文件，已合并为一次提交。
+- `ShowInTaskbar` 运行时切换的警告经 Serilog 静态日志器记录，与 `App.xaml.cs` 的既有日志方式一致。
 
 ### 遗留项
 
 | 项 | 处理时点 |
 |---|---|
 | 另一 Windows 版本（Win10 / Win11）实测补验 | 随阶段 2 双系统探测 |
-| Demo 窗口、视图模型与转换器的删除 | 阶段 4 |
-| 可见性守护定时器的移除 | 阶段 9 |
+| Demo 窗口与视图模型的删除 | 阶段 4 |
+| 三个切换项的防锁死守护定时器的移除 | 阶段 9 |
 | 标题栏编辑态的焦点策略（与 `WS_EX_NOACTIVATE` 冲突） | 阶段 4 |
 
 ### 说明

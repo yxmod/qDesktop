@@ -143,12 +143,13 @@ qDesktop 为 Windows 用户提供**轻量、开源、可自由组织**的桌面�
 
 ### 3.5 防激活策略：`WS_EX_NOACTIVATE` + 拦截 `WM_MOUSEACTIVATE`
 
-**决策**：双重保障——静态样式位 `WS_EX_NOACTIVATE` 与消息级拦截 `WM_MOUSEACTIVATE`（返回 `MA_NOACTIVATE`）同时启用。
+**决策**：双重保障——静态样式位 `WS_EX_NOACTIVATE` 与消息级拦截 `WM_MOUSEACTIVATE`（返回 `MA_NOACTIVATE`）同时启用；拦截时**同时**执行一次 `SetWindowPos(HWND_TOP, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)`，把窗口提升到 Z 序顶端但不激活它。
 
 **理由**：
 
 1. `WS_EX_NOACTIVATE` 阻止窗口在点击时成为前台窗口，但**不阻止** WPF 内部对该消息的处理路径；显式拦截 `WM_MOUSEACTIVATE` 可保证返回值确定，避免不同 Windows 版本或 WPF 版本下行为漂移（`mission.md` 第 7 节「Win10 与 Win11 桌面层结构差异」的同类风险）。
 2. 拦截通过 `HwndSource.AddHook` 实现，钩子在 `SourceInitialized` 时挂载、在窗口 `Closed` 时移除，避免句柄泄漏（对齐 `tech-stack.md` 2.5 节的泄漏排查要求）。
+3. **必须显式提升 Z 序**：系统「点击未激活窗口 → 先激活再提升」的行为被 `WS_EX_NOACTIVATE` 一并抑制。若不补发 `SetWindowPos`，一旦关闭 `Topmost`，窗口被其他窗口遮挡后即无法通过点击回到最前（实现期实测确认）。补发的调用带 `SWP_NOACTIVATE`，因此仍然不夺焦点，只是「到最前」而非「成为前台」。
 
 **已识别的代价**：
 
@@ -156,19 +157,24 @@ qDesktop 为 Windows 用户提供**轻量、开源、可自由组织**的桌面�
 |---|---|
 | 窗口无法通过点击获得键盘焦点 | 阶段 1 无文本输入需求；阶段 4 的标题栏编辑（`roadmap.md` 阶段 4 任务 5）需要焦点，届时须评估「编辑态临时撤销 `WS_EX_NOACTIVATE`」的策略，登记为遗留项（见 5.3） |
 
-### 3.6 可见性切换的守护策略
+### 3.6 三个切换项的统一防锁死守护
 
-**决策**：Demo 的第三个按钮切换 `Visibility`（`Visible ↔ Hidden`）；隐藏后启动一个 **3 秒守护定时器自动恢复为 `Visible`**，并在界面状态文本中说明该行为。
+**决策**：Demo 的三个切换项在进入「风险状态」时均启动**倒计时守护**，到期自动恢复为安全状态；剩余秒数在状态文本中实时显示。
+
+| 切换项 | 风险状态 | 锁死原因 | 守护时长 | 到期动作 |
+|---|---|---|---|---|
+| 点击穿透 | 开启 | 窗口不再接收鼠标消息，三个按钮全部不可点击；又因 `ShowInTaskbar=false` + `WS_EX_TOOLWINDOW` 而无任务栏与 `Alt+Tab` 入口 | 10 秒 | 自动关闭穿透 |
+| 置顶 | 关闭 | 窗口可能被其他窗口完全遮挡，且点击不会激活（见 3.5） | 10 秒 | 自动恢复置顶 |
+| 可见性 | 隐藏 | 窗口不可见，无任何恢复入口 | 3 秒 | 自动恢复为可见 |
 
 **理由**：
 
 1. `roadmap.md` 阶段 1 任务 5 明确要求验证「可见性」切换，故须真实操作 `Visibility` 而非用透明度近似。
-2. 阶段 1 尚无托盘图标与全局热键（属阶段 9）。若 Demo 窗口隐藏后无任何恢复入口，验证者会被锁在「窗口不可见且无法唤回」的状态，只能结束进程——这会使该验证项**不可复现**，违反 `validation.md` 的「可复现」原则。
-3. 守护定时器是**验证期权宜手段**，在阶段 9 托盘 / 热键到位后应移除；已在 5.3 节登记。
-4. 视图模型不得引用 WPF 视图类型，故 `Visibility` 的换算由**视图层**的
-   `BoolToHiddenVisibilityConverter`（`false` → `Hidden`）承担，而非在视图模型中暴露
-   `Visibility`。该转换器须注册在 `App.xaml` 的 `Application.Resources`：窗口根元素上的
-   `StaticResource` 在窗口资源字典解析之前求值，置于窗口资源会抛 `XamlParseException`。
+2. 阶段 1 尚无托盘图标与全局热键（属阶段 9）。若三个切换项中的任何一个把验证者锁在「窗口不可操作且无法唤回」的状态，对应验证项将**不可复现**，违反 `validation.md` 的「可复现」原则。`validation.md` V3.2 的注中已预警穿透场景，此处把该缓解手段扩展为三项统一策略。
+3. 守护时长分两档：可见性沿用 3 秒（对齐 V5.3 的验收表述）；穿透与置顶取 10 秒，以留出足够时间完成「切到记事本 → 在窗口区域点击 → 观察落点」的人工观察动作，同时不至于长时间无法操作。
+4. 守护是**验证期权宜手段**，在阶段 9 托盘 / 热键到位后应移除；已在 5.3 节登记。
+
+**可见性的应用方式**：视图模型不引用 WPF 视图类型，故 `Visibility` 由**视图**在视图模型 `PropertyChanged` 回调中直接设置（`true` → `Visible`，`false` → `Hidden`），**不使用 XAML 绑定**——窗口根元素上的 `Visibility` 绑定会被 `Window.Show()` 设定的本地值顶掉，绑定随之中断（实现期实测确认）。此实现正对应 `plan.md` TG4.3「窗口属性的实际应用由视图在绑定回调中完成」。
 
 ### 3.7 不引入自动化行为测试
 
@@ -243,7 +249,7 @@ tests/qDesktop.Core.Tests ──> qDesktop.Core
 |---|---|
 | 双版本（Win10 / Win11）中未覆盖版本的实测补验 | 阶段 2 桌面层探测时一并完成（阶段 2 本就要求在双系统分别探测） |
 | 标题栏编辑态如何临时获得键盘焦点（与 3.5 的 `WS_EX_NOACTIVATE` 冲突） | 阶段 4（首次出现文本输入） |
-| 可见性守护定时器的移除 | 阶段 9（托盘图标与全局热键到位后） |
+| 三个切换项的防锁死守护定时器的移除 | 阶段 9（托盘图标与全局热键到位后） |
 | Demo 窗口及其视图模型的删除 | 阶段 4 |
 | 是否为 `qDesktop.Interop` 建立独立测试项目 | 阶段 2 或阶段 10（出现成规模可测逻辑时） |
 
@@ -256,7 +262,7 @@ tests/qDesktop.Core.Tests ──> qDesktop.Core
 | D1 | `qDesktop.Interop` 窗口样式基础设施（P/Invoke + 常量 + 辅助） | 源码 |
 | D2 | `LayeredWindowHost` 控件 | 源码 |
 | D3 | `LayeredWindowHostViewModel`（MVVM） | 源码 |
-| D4 | `LayeredWindowHostDemoWindow`（三按钮验证窗口）及其专用可见性转换器 `BoolToHiddenVisibilityConverter`（见 3.6） | 源码 |
+| D4 | `LayeredWindowHostDemoWindow`（三按钮验证窗口） | 源码 |
 | D5 | 宿主 DI 注册更新与启动路径切换 | 源码 |
 | D6 | 窗口行为验证记录（见 `validation.md` 附录 A） | 验证记录 |
 | D7 | 待评审的 PR（含三份文档链接与验收结论） | 交付流程 |

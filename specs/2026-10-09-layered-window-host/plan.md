@@ -90,7 +90,7 @@ TG1 ──> TG2 ──> TG3 ──> TG5 ──> TG6
 2. **2.2** 在 `SourceInitialized` 中获取 `HwndSource`，一次性应用扩展样式：
    - 追加 `WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE`；
    - 对 `WS_EX_LAYERED` 执行**幂等**处理：读取当前样式，已置位则不重复写（依据 `requirements.md` 3.4）。
-3. **2.3** 在 `SourceInitialized` 中通过 `HwndSource.AddHook` 挂载窗口过程钩子，拦截 `WM_MOUSEACTIVATE` 并返回 `MA_NOACTIVATE`。
+3. **2.3** 在 `SourceInitialized` 中通过 `HwndSource.AddHook` 挂载窗口过程钩子，拦截 `WM_MOUSEACTIVATE`：先补发一次 `SetWindowPos(HWND_TOP, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)` 把窗口提到 Z 序顶端，再返回 `MA_NOACTIVATE`。提升是必需的——`WS_EX_NOACTIVATE` 会一并抑制「点击激活 → 自动提升」的系统行为（依据 `requirements.md` 3.5）。
 4. **2.4** 在窗口 `Closed` 时移除钩子并释放 `HwndSource` 引用，避免句柄泄漏。
 5. **2.5** 约束 `ShowInTaskbar` 为初始化期设定：在窗口显示后尝试运行时切换时，记录一条警告日志并忽略该变更（依据 `requirements.md` 3.4）。
 
@@ -144,8 +144,8 @@ TG1 ──> TG2 ──> TG3 ──> TG5 ──> TG6
 2. **4.2** 新增 `LayeredWindowHostViewModel`：
    - 可观察属性：`IsClickThrough`、`IsTopmost`、`IsVisible`、`StatusText`；
    - 命令：`ToggleClickThroughCommand`、`ToggleTopmostCommand`、`ToggleVisibilityCommand`（`[RelayCommand]` 源生成）；
-   - `IsVisible` 的置位触发 3 秒守护定时器自动恢复为 `true`（依据 `requirements.md` 3.6），并在 `StatusText` 中说明。
-3. **4.3** 视图模型不直接引用 `Window`；窗口可见性、置顶、穿透的实际应用由**视图**在绑定回调中完成，保持视图模型可脱离 UI 独立构造。
+   - **统一防锁死守护**（依据 `requirements.md` 3.6）：三个命令在进入风险状态时启动 1 秒跳动的倒计时守护，到期自动恢复安全状态——穿透开启（10 秒 → 关闭）、置顶关闭（10 秒 → 恢复）、可见性隐藏（3 秒 → 恢复）；返回安全状态或用户再次切换时取消守护；`StatusText` 实时显示剩余秒数。
+3. **4.3** 视图模型不直接引用 `Window`；窗口可见性、置顶、穿透的实际应用由**视图**在绑定回调中完成，保持视图模型可脱离 UI 独立构造。其中可见性由视图在 `PropertyChanged` 回调中直接设置 `Visibility`（`true` → `Visible`，`false` → `Hidden`），不使用 XAML 绑定——根元素上的 `Visibility` 绑定会被 `Window.Show()` 设定的本地值顶掉。
 4. **4.4** 在 `App.BuildHost` 中追加注册（依据 `requirements.md` 3.3）：
    - `AddTransient<LayeredWindowHostViewModel>()`；
    - `AddTransient<LayeredWindowHostDemoWindow>()`。
@@ -176,7 +176,7 @@ TG1 ──> TG2 ──> TG3 ──> TG5 ──> TG6
    - 按钮一：切换**点击穿透**；
    - 按钮二：切换**置顶**；
    - 按钮三：切换**可见性**（隐藏后 3 秒自动恢复）。
-2. **5.2** 采用数据绑定连接视图模型：按钮绑定命令，状态文本绑定 `StatusText`，窗口自身属性绑定 `IsClickThrough` / `IsTopmost` / `IsVisible`。
+2. **5.2** 采用数据绑定连接视图模型：按钮绑定命令，状态文本绑定 `StatusText`，窗口的 `IsClickThrough` / `Topmost` 绑定对应属性；`Visibility` 由窗口在视图模型属性变更回调中应用（原因见 TG4.3）。
 3. **5.3** 窗口内添加一段可见的说明文字，注明「本窗口为阶段 1 临时验证产物，阶段 4 删除」。
 4. **5.4** 调整启动路径：`App.OnStartup` 改为从容器解析并显示 `LayeredWindowHostDemoWindow`；`MainWindow` 保留注册但不在启动路径显示（依据 `requirements.md` 3.1）。
 5. **5.5** 窗口尺寸与位置固定为便于验证的默认值（如 420 × 220，屏幕居中）。
@@ -184,7 +184,6 @@ TG1 ──> TG2 ──> TG3 ──> TG5 ──> TG6
 ### 交付物
 
 - `LayeredWindowHostDemoWindow`
-- `BoolToHiddenVisibilityConverter`（`bool` → `Visibility`，`false` 映射为 `Hidden`；注册在 `App.xaml` 的 `Application.Resources`）
 - 切换后的启动路径
 
 ### 完成判据
