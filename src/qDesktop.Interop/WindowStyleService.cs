@@ -94,4 +94,24 @@ public sealed class WindowStyleService
             | SetWindowPosFlags.NoZOrder
             | SetWindowPosFlags.NoActivate
             | SetWindowPosFlags.FrameChanged);
+
+    /// <summary>
+    /// 将窗口提升到 Z 序顶端，但**不激活**它。
+    /// </summary>
+    /// <remarks>
+    /// <c>WS_EX_NOACTIVATE</c> 会抑制「点击激活 → 系统自动提升 Z 序」的行为。若不显式提升，
+    /// 关闭 <c>Topmost</c> 后窗口将无法通过点击回到最前（见
+    /// specs/2026-10-09-layered-window-host/requirements.md 3.5）。
+    /// </remarks>
+    public void BringToTop()
+        => NativeMethods.SetWindowPos(
+            _handle,
+            IntPtr.Zero,
+            0,
+            0,
+            0,
+            0,
+            SetWindowPosFlags.NoMove
+            | SetWindowPosFlags.NoSize
+            | SetWindowPosFlags.NoActivate);
 }

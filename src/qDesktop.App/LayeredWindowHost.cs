@@ -162,6 +162,10 @@ public class LayeredWindowHost : Window
         // （见 requirements.md 3.5）。
         if (msg == WindowMessages.MouseActivate)
         {
+            // WS_EX_NOACTIVATE 会抑制「点击激活 → 自动提升 Z 序」，若不显式提升，
+            // 关闭 Topmost 后窗口将无法通过点击回到最前。此处只提升、不激活，仍不夺焦点。
+            _styleService?.BringToTop();
+
             handled = true;
             return new IntPtr(WindowMessages.MouseActivateNoActivate);
         }

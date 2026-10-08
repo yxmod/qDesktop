@@ -4,21 +4,26 @@
     被测对象即本窗口自身（继承 LayeredWindowHost）：
       - 按钮一：切换点击穿透（WS_EX_TRANSPARENT）
       - 按钮二：切换始终置顶（Topmost）
-      - 按钮三：切换可见性（隐藏后 3 秒由守护定时器自动恢复）
+      - 按钮三：切换可见性（Visibility）
 
-    本窗口为阶段 1 临时产物，阶段 4（栅栏渲染落地）时连同视图模型与转换器一并删除。
+    三个切换项在进入「风险状态」时均会启动倒计时守护并自动恢复安全状态，
+    剩余秒数显示在状态文本中（阶段 1 尚无托盘与热键，用于防止验证者被锁死）。
+
+    本窗口为阶段 1 临时产物，阶段 4（栅栏渲染落地）时连同视图模型一并删除。
     见 specs/2026-10-09-layered-window-host/requirements.md 3.1。
+
+    注：窗口的 Visibility 由代码后置在视图模型属性变更时应用，不使用 XAML 绑定
+    （根元素上的 Visibility 绑定会被 Window.Show() 设定的本地值顶掉）。
 -->
 <local:LayeredWindowHost x:Class="qDesktop.App.LayeredWindowHostDemoWindow"
                          xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                          xmlns:local="clr-namespace:qDesktop.App"
                          Title="qDesktop · 阶段 1 窗口属性验证"
-                         Width="420"
-                         Height="220"
+                         Width="440"
+                         Height="240"
                          IsClickThrough="{Binding IsClickThrough, Mode=TwoWay}"
-                         Topmost="{Binding IsTopmost, Mode=TwoWay}"
-                         Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                         Topmost="{Binding IsTopmost, Mode=TwoWay}">
 
     <Border Background="#CC1B1B1F"
             BorderBrush="#66FFFFFF"

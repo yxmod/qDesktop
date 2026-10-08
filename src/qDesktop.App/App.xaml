@@ -7,12 +7,5 @@
         以保证窗口及其依赖（视图模型、服务）统一由容器装配。
     -->
     <Application.Resources>
-        <!--
-            阶段 1 临时验证资源：Demo 窗口的可见性转换器。
-            必须置于 Application 资源（而非窗口自身资源）——窗口根元素上的
-            StaticResource 在窗口资源字典解析之前求值，否则将抛 XamlParseException。
-            随 Demo 窗口一并在阶段 4 删除。
-        -->
-        <local:BoolToHiddenVisibilityConverter x:Key="BoolToVisibilityConverter" />
     </Application.Resources>
 </Application>
