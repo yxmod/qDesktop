@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- P/Invoke 声明需要非安全代码块 -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!--
+    qDesktop.Interop：全部 Win32 P/Invoke 声明的唯一落点。
+    业务层（Core）不得直接调用，须经 App 组合后注入。
+  -->
+
+</Project>

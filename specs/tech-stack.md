@@ -88,6 +88,16 @@
 | 代码风格 | `.editorconfig` + `dotnet format` | 统一格式，CI 中校验 |
 | 内存 / 泄漏检查 | dotnet-counters + 手动长时间运行测试 | 重点排查钩子与图标句柄泄漏 |
 
+#### 2.5.1 分析器规则豁免登记
+
+`TreatWarningsAsErrors=true` 下，任何分析器规则命中即中断构建。以下为**已登记的定向豁免**，豁免范围严格限定，且必须在本文档留痕（依据 `specs/2026-10-08-project-scaffold/validation.md` 6.2）：
+
+| 规则 | 豁免范围 | 理由 | 登记阶段 |
+|---|---|---|---|
+| `CA1707`（标识符不应包含下划线） | 仅 `tests/**/*.cs` | 与 xUnit 社区惯例 `Method_Scenario_Expectation` 直接冲突，测试方法名可读性收益高于规则收益；生产代码仍受约束 | 阶段 0 |
+
+> 豁免在 `.editorconfig` 中以路径分区实现，不使用全局 `NoWarn`。新增豁免须同时更新本表。
+
 ### 2.6 工程与交付
 
 | 项目 | 选型 | 说明 |
